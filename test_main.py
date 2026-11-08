@@ -41,7 +41,7 @@ def test_search_success():
         "ingredients": [{"name": "Огурец", "quantity": 1}]
     })
 
-    # Ищем с достаточным количеством (и проверяем регистронезависимость)
+    # Ищем с достаточным количеством
     response = client.post("/recipes/search", json=[
         {"name": "огурец", "quantity": 2}
     ])
@@ -57,12 +57,11 @@ def test_search_fail_not_enough():
         "ingredients": [{"name": "Яйцо", "quantity": 3}]
     })
 
-    # Даем только 2 яйца вместо 3
     response = client.post("/recipes/search", json=[
         {"name": "Яйцо", "quantity": 2}
     ])
     assert response.status_code == 200
-    assert len(response.json()) == 0  # Рецепт не должен подойти
+    assert len(response.json()) == 0
 
 
 def test_search_sorting():
@@ -76,11 +75,10 @@ def test_search_sorting():
     data = response.json()
 
     assert len(data) == 2
-    assert data[0]["name"] == "Высокий рейтинг"  # Должен быть первым
+    assert data[0]["name"] == "Высокий рейтинг"
     assert data[1]["name"] == "Низкий рейтинг"
 
 def test_search_partial_match_break():
-    # Добавляем рецепт с ДВУМЯ ингредиентами
     client.post("/recipes", json={
         "name": "Сложный рецепт",
         "rating": 4.0,
@@ -89,20 +87,16 @@ def test_search_partial_match_break():
             {"name": "Сахар", "quantity": 200}
         ]
     })
-    # Пользователь дает муку, но НЕ ДАЕТ сахар.
-    # Код должен прервать проверку (break) на сахаре.
     response = client.post("/recipes/search", json=[{"name": "Мука", "quantity": 500}])
     assert response.status_code == 200
     assert len(response.json()) == 0
 
 
 def test_search_mixed_results():
-    # Рецепт, который подойдет
     client.post("/recipes", json={"name": "Вода", "rating": 4.0, "ingredients": [{"name": "Вода", "quantity": 1}]})
     # Рецепт, который НЕ подойдет
     client.post("/recipes", json={"name": "Огонь", "rating": 5.0, "ingredients": [{"name": "Огонь", "quantity": 1}]})
 
-    # Ищем, имея только воду
     response = client.post("/recipes/search", json=[{"name": "Вода", "quantity": 5}])
 
     assert response.status_code == 200
@@ -111,23 +105,19 @@ def test_search_mixed_results():
 
 
 def test_search_strict_break():
-    # Добавляем рецепт, где ИМЕННО КОЛИЧЕСТВА не хватает (чтобы сработала вторая часть условия)
     client.post("/recipes", json={
         "name": "Много сахара",
         "rating": 4.0,
         "ingredients": [{"name": "Сахар", "quantity": 100}]
     })
 
-    # Даем сахар, но мало (50 вместо 100)
     response = client.post("/recipes/search", json=[{"name": "Сахар", "quantity": 50}])
 
-    # Проверяем, что рецепт не подошел
     assert response.status_code == 200
     assert len(response.json()) == 0
 
 
 def test_search_complex_recipe_branches():
-    # Добавляем сложный рецепт из двух ингредиентов
     client.post("/recipes", json={
         "name": "Сложный рецепт",
         "rating": 4.0,
@@ -137,18 +127,18 @@ def test_search_complex_recipe_branches():
         ]
     })
 
-    # Сценарий 1: Муки хватает, а сахара вообще нет (сработает 1-я часть условия)
+    # Сценарий 1: Муки хватает, а сахара вообще нет
     response1 = client.post("/recipes/search", json=[{"name": "Мука", "quantity": 500}])
     assert len(response1.json()) == 0
 
-    # Сценарий 2: Муки хватает, сахар есть, но его мало (сработает 2-я часть условия)
+    # Сценарий 2: Муки хватает, сахар есть, но его мало
     response2 = client.post("/recipes/search", json=[
         {"name": "Мука", "quantity": 500},
         {"name": "Сахар", "quantity": 100}
     ])
     assert len(response2.json()) == 0
 
-    # Сценарий 3: Всего хватает (успешный сценарий)
+    # Сценарий 3: Всего хватает
     response3 = client.post("/recipes/search", json=[
         {"name": "Мука", "quantity": 600},
         {"name": "Сахар", "quantity": 300}
