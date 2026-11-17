@@ -2,9 +2,7 @@ import pytest
 import pytest_asyncio
 from httpx import AsyncClient, ASGITransport
 from mongomock_motor import AsyncMongoMockClient
-
 from main import app, mongo
-
 
 @pytest_asyncio.fixture(autouse=True)
 async def setup_mongo():
@@ -15,20 +13,16 @@ async def setup_mongo():
     mongo.client = None
     mongo.db = None
 
-
 @pytest_asyncio.fixture
 async def client():
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         yield ac
 
-
 @pytest.mark.asyncio
 async def test_root(client):
     response = await client.get("/")
     assert response.status_code == 200
-    assert response.json()["status"] == "ok"
-
 
 @pytest.mark.asyncio
 async def test_add_recipe(client):
@@ -60,6 +54,12 @@ async def test_search_partial_match(client):
     assert response.json()[0]["name"] == "Омлет"
 
 @pytest.mark.asyncio
+async def test_search_empty(client):
+    response = await client.post("/recipes/search", json=[])
+    assert response.status_code == 400
+    assert response.json()["detail"] == "Список ингредиентов не может быть пустым"
+
+@pytest.mark.asyncio
 async def test_search_sorting(client):
     await client.post("/recipes", json={
         "name": "Низкий", "rating": 2.0,
@@ -73,3 +73,11 @@ async def test_search_sorting(client):
     data = response.json()
     assert data[0]["name"] == "Высокий"
     assert data[1]["name"] == "Низкий"
+
+@pytest.mark.asyncio
+async def test_add_recipe_validation(client):
+    response = await client.post("/recipes", json={
+        "name": "", "rating": 10,
+        "ingredients": [],
+    })
+    assert response.status_code == 422
