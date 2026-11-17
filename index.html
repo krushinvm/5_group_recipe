@@ -28,7 +28,7 @@
         <h3>Добавить новый рецепт</h3>
         <input type="text" id="r-name" placeholder="Название (например: Борщ)">
         <input type="number" id="r-rating" placeholder="Рейтинг (1-5)" step="0.1" min="0" max="5">
-        <input type="text" id="r-ingredients" placeholder="Ингредиенты (Свекла:2, Капуста:100)" style="width: 100%;">
+        <input type="text" id="r-ingredients" placeholder="Ингредиенты (Рис:200 г, Яйцо:2 шт)" style="width: 100%;">
         <button onclick="addRecipe()">Сохранить рецепт</button>
     </div>
 
@@ -44,7 +44,7 @@
     <!-- Поиск по ингредиентам -->
     <div class="panel">
         <h3>🥗 Поиск по ингредиентам</h3>
-        <input type="text" id="search-ingredients" placeholder="Введите продукты (например: Макароны:250, Помидоры:4)" style="width: 100%; margin-bottom: 10px;">
+        <input type="text" id="search-ingredients" placeholder="Введите продукты (например: Рис:200 г, Яйцо:2 шт)" style="width: 100%; margin-bottom: 10px;">
         <button onclick="searchByIngredients()">Что можно приготовить?</button>
     </div>
 
@@ -61,10 +61,31 @@
         const rating = parseFloat(document.getElementById('r-rating').value);
         const ingStr = document.getElementById('r-ingredients').value;
 
+        // Умный парсинг: "Рис:200 г" -> {name: "Рис", quantity: 200, unit: "г"}
         const ingredients = ingStr.split(',').map(item => {
-            const [ingName, ingQty] = item.split(':');
-            return { name: ingName.trim(), quantity: parseFloat(ingQty) };
-        });
+            const parts = item.split(':'); // Делим по двоеточию
+            if (parts.length < 2) return null;
+
+            const ingName = parts[0].trim();
+            const qtyAndUnit = parts[1].trim(); // Строка "200 г"
+
+            // Ищем цифры и буквы: ([0-9.]+) - это количество, (.*) - это единица измерения
+            const match = qtyAndUnit.match(/^([\d.]+)\s*(.*)$/);
+
+            if (match) {
+                return {
+                    name: ingName,
+                    quantity: parseFloat(match[1]),
+                    unit: match[2] ? match[2].trim() : 'шт' // Если единицу не написали, ставим "шт"
+                };
+            }
+            return null;
+        }).filter(item => item && item.name && !isNaN(item.quantity));
+
+        if (ingredients.length === 0) {
+            alert('Проверьте формат ингредиентов! Пример: Рис:200 г, Яйцо:2 шт');
+            return;
+        }
 
         await fetch(`${API_URL}/recipes`, {
             method: 'POST',
@@ -100,16 +121,28 @@
             return;
         }
 
+        // Тот же умный парсинг: "Рис:200 г" -> {name: "Рис", quantity: 200, unit: "г"}
         const ingredients = ingStr.split(',').map(item => {
             const parts = item.split(':');
-            return {
-                name: parts[0].trim(),
-                quantity: parseFloat(parts[1])
-            };
-        }).filter(item => item.name && !isNaN(item.quantity)); // Убираем пустые или неверные данные
+            if (parts.length < 2) return null;
+
+            const ingName = parts[0].trim();
+            const qtyAndUnit = parts[1].trim();
+
+            const match = qtyAndUnit.match(/^([\d.]+)\s*(.*)$/);
+
+            if (match) {
+                return {
+                    name: ingName,
+                    quantity: parseFloat(match[1]),
+                    unit: match[2] ? match[2].trim() : 'шт'
+                };
+            }
+            return null;
+        }).filter(item => item && item.name && !isNaN(item.quantity));
 
         if (ingredients.length === 0) {
-            alert("Ошибка формата! Пишите через двоеточие. Пример: Сыр:100, Хлеб:2");
+            alert("Ошибка формата! Пишите так: Сыр:100 г, Яйцо:2 шт");
             return;
         }
 
@@ -136,7 +169,7 @@
         }
 
         recipes.forEach(recipe => {
-            const ingredientsHtml = recipe.ingredients.map(ing => `<li>• ${ing.name}: ${ing.quantity}</li>`).join('');
+            const ingredientsHtml = recipe.ingredients.map(ing => `<li>• ${ing.name}: ${ing.quantity} ${ing.unit}</li>`).join('');
             resultsDiv.innerHTML += `
                 <div class="recipe-card">
                     <div class="recipe-name">${recipe.name}</div>
