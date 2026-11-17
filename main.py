@@ -1,3 +1,6 @@
+from fastapi.middleware.cors import CORSMiddleware
+
+import re
 import os
 import uuid
 from contextlib import asynccontextmanager
@@ -50,6 +53,14 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 
 @app.get("/", summary="Проверка работы сервера и БД")
 async def root():
@@ -72,24 +83,49 @@ async def add_recipe(recipe: RecipeCreate):
     return new_recipe
 
 
-@app.post("/recipes/search", response_model=List[Recipe], summary="Подобрать рецепты")
+@app.get("/recipes", response_model=List[Recipe], summary="Поиск рецептов по названию")
+async def get_recipes_by_name(name: str = None):
+    """
+    Ищет рецепты по частичному совпадению названия.
+    Если name не передан, возвращает все рецепты.
+    """
+    query = {}
+    if name:
+        query["name"] = {"$regex": name, "$options": "i"}
+
+    cursor = mongo.db.recipes.find(query, {"_id": 0})
+    recipes = await cursor.to_list(length=100)
+
+    # Сортируем по рейтингу
+    recipes.sort(key=lambda x: x["rating"], reverse=True)
+    return recipes
+
+
+@app.post("/recipes/search", response_model=List[Recipe], summary="Подобрать рецепты (частичное совпадение)")
 async def search_recipes(user_ingredients: List[Ingredient]):
     if not user_ingredients:
         raise HTTPException(status_code=400, detail="Список ингредиентов не может быть пустым")
 
+    # Создаем словарь того, что есть у пользователя (в нижнем регистре для удобства)
     user_dict = {ing.name.strip().lower(): ing.quantity for ing in user_ingredients}
     suitable = []
 
     cursor = mongo.db.recipes.find({}, {"_id": 0})
     async for doc in cursor:
-        can_cook = True
+        match_count = 0
+
+        # Проверяем, сколько ингредиентов из рецепта есть у пользователя
         for req in doc["ingredients"]:
             req_name = req["name"].strip().lower()
-            if req_name not in user_dict or user_dict[req_name] < req["quantity"]:
-                can_cook = False
-                break
-        if can_cook:
+            if req_name in user_dict:
+                # Если ингредиент есть в списке пользователя, засчитываем совпадение.
+                # Количество пока не проверяем, чтобы показать рецепт, даже если не хватает.
+                match_count += 1
+
+        # Если совпал хотя бы один ингредиент — берем рецепт!
+        if match_count > 0:
             suitable.append(doc)
 
+    # Сортируем по рейтингу (от большего к меньшему)
     suitable.sort(key=lambda x: x["rating"], reverse=True)
     return suitable

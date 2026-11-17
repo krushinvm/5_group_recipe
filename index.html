@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Кулинарная книга</title>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background-color: #f4f7f6; padding: 20px; color: #333; }
+        .container { max-width: 800px; margin: 0 auto; }
+        .panel { background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin-bottom: 20px; }
+        input, button { padding: 10px; margin: 5px 0; border-radius: 5px; border: 1px solid #ccc; font-size: 16px; }
+        button { background-color: #27ae60; color: white; border: none; cursor: pointer; width: 100%; margin-top: 10px;}
+        button:hover { background-color: #219150; }
+        .recipes-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; }
+        .recipe-card { background: white; border-radius: 10px; padding: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .recipe-name { font-size: 20px; font-weight: bold; color: #2c3e50; }
+        .recipe-rating { color: #f39c12; font-weight: bold; margin-bottom: 10px; }
+        .ingredients-list { list-style-type: none; padding: 0; color: #7f8c8d; }
+        .flex-row { display: flex; gap: 10px; }
+        .flex-row input { flex: 1; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>🍳 Управление рецептами</h1>
+
+    <!-- Форма добавления рецепта -->
+    <div class="panel">
+        <h3>Добавить новый рецепт</h3>
+        <input type="text" id="r-name" placeholder="Название (например: Борщ)">
+        <input type="number" id="r-rating" placeholder="Рейтинг (1-5)" step="0.1" min="0" max="5">
+        <input type="text" id="r-ingredients" placeholder="Ингредиенты (Свекла:2, Капуста:100)" style="width: 100%;">
+        <button onclick="addRecipe()">Сохранить рецепт</button>
+    </div>
+
+    <!-- Поиск по названию -->
+    <div class="panel">
+        <h3>🔍 Поиск по названию</h3>
+        <div class="flex-row">
+            <input type="text" id="search-name" placeholder="Введите название (например: паста)">
+            <button onclick="searchByName()" style="width: auto;">Найти</button>
+        </div>
+    </div>
+
+    <!-- Поиск по ингредиентам -->
+    <div class="panel">
+        <h3>🥗 Поиск по ингредиентам</h3>
+        <input type="text" id="search-ingredients" placeholder="Введите продукты (например: Макароны:250, Помидоры:4)" style="width: 100%; margin-bottom: 10px;">
+        <button onclick="searchByIngredients()">Что можно приготовить?</button>
+    </div>
+
+    <!-- Результаты -->
+    <div id="results" class="recipes-grid"></div>
+</div>
+
+<script>
+    const API_URL = 'http://127.0.0.1:8000';
+
+    // 1. Добавление рецепта
+    async function addRecipe() {
+        const name = document.getElementById('r-name').value;
+        const rating = parseFloat(document.getElementById('r-rating').value);
+        const ingStr = document.getElementById('r-ingredients').value;
+
+        const ingredients = ingStr.split(',').map(item => {
+            const [ingName, ingQty] = item.split(':');
+            return { name: ingName.trim(), quantity: parseFloat(ingQty) };
+        });
+
+        await fetch(`${API_URL}/recipes`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name, rating, ingredients })
+        });
+
+        alert('Рецепт добавлен!');
+        document.getElementById('r-name').value = '';
+        document.getElementById('r-rating').value = '';
+        document.getElementById('r-ingredients').value = '';
+    }
+
+    // 2. Поиск по названию
+    async function searchByName() {
+        const nameQuery = document.getElementById('search-name').value;
+        const resultsDiv = document.getElementById('results');
+        resultsDiv.innerHTML = '<p>Ищем...</p>';
+
+        // Если поле пустое, найдет все рецепты
+        const response = await fetch(`${API_URL}/recipes?name=${nameQuery}`);
+        const recipes = await response.json();
+
+        renderRecipes(recipes);
+    }
+
+    // 3. Поиск по ингредиентам
+    async function searchByIngredients() {
+        const ingStr = document.getElementById('search-ingredients').value;
+
+        if (!ingStr.trim()) {
+            alert("Пожалуйста, введите продукты!");
+            return;
+        }
+
+        // Превращаем текст "Макароны:250, Помидоры:4" в правильный JSON
+        const ingredients = ingStr.split(',').map(item => {
+            const parts = item.split(':');
+            return {
+                name: parts[0].trim(),
+                quantity: parseFloat(parts[1])
+            };
+        }).filter(item => item.name && !isNaN(item.quantity)); // Убираем пустые или неверные данные
+
+        if (ingredients.length === 0) {
+            alert("Ошибка формата! Пишите через двоеточие. Пример: Сыр:100, Хлеб:2");
+            return;
+        }
+
+        const resultsDiv = document.getElementById('results');
+        resultsDiv.innerHTML = '<p>Ищем...</p>';
+
+        const response = await fetch(`${API_URL}/recipes/search`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(ingredients)
+        });
+
+        const recipes = await response.json();
+        renderRecipes(recipes);
+    }
+
+    // Функция отрисовки карточек
+    function renderRecipes(recipes) {
+        const resultsDiv = document.getElementById('results');
+        resultsDiv.innerHTML = '';
+
+        if (recipes.length === 0) {
+            resultsDiv.innerHTML = '<p>Ничего не найдено 😢</p>';
+            return;
+        }
+
+        recipes.forEach(recipe => {
+            const ingredientsHtml = recipe.ingredients.map(ing => `<li>• ${ing.name}: ${ing.quantity}</li>`).join('');
+            resultsDiv.innerHTML += `
+                <div class="recipe-card">
+                    <div class="recipe-name">${recipe.name}</div>
+                    <div class="recipe-rating">★ ${recipe.rating}</div>
+                    <ul class="ingredients-list">${ingredientsHtml}</ul>
+                </div>
+            `;
+        });
+    }
+</script>
+</body>
+</html>
