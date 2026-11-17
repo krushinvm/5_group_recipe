@@ -17,6 +17,7 @@ DB_NAME = os.getenv("DB_NAME", "recipe_finder")
 class Ingredient(BaseModel):
     name: str = Field(..., min_length=1, description="Название продукта")
     quantity: float = Field(..., gt=0, description="Количество")
+    unit: str = Field(..., description="Единица измерения (г, мл, шт)")
 
 
 class RecipeCreate(BaseModel):
