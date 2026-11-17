@@ -22,7 +22,7 @@ class Ingredient(BaseModel):
 class RecipeCreate(BaseModel):
     name: str = Field(..., min_length=1, description="Название рецепта")
     rating: float = Field(..., ge=0, le=5, description="Рейтинг от 0 до 5")
-    ingredients: List[Ingredient] = Field(..., min_items=1)
+    ingredients: List[Ingredient] = Field(..., min_length=1, description="Список необходимых ингредиентов")
 
 
 class Recipe(RecipeCreate):
@@ -85,10 +85,6 @@ async def add_recipe(recipe: RecipeCreate):
 
 @app.get("/recipes", response_model=List[Recipe], summary="Поиск рецептов по названию")
 async def get_recipes_by_name(name: str = None):
-    """
-    Ищет рецепты по частичному совпадению названия.
-    Если name не передан, возвращает все рецепты.
-    """
     query = {}
     if name:
         query["name"] = {"$regex": name, "$options": "i"}
@@ -96,7 +92,6 @@ async def get_recipes_by_name(name: str = None):
     cursor = mongo.db.recipes.find(query, {"_id": 0})
     recipes = await cursor.to_list(length=100)
 
-    # Сортируем по рейтингу
     recipes.sort(key=lambda x: x["rating"], reverse=True)
     return recipes
 
@@ -106,7 +101,6 @@ async def search_recipes(user_ingredients: List[Ingredient]):
     if not user_ingredients:
         raise HTTPException(status_code=400, detail="Список ингредиентов не может быть пустым")
 
-    # Создаем словарь того, что есть у пользователя (в нижнем регистре для удобства)
     user_dict = {ing.name.strip().lower(): ing.quantity for ing in user_ingredients}
     suitable = []
 
@@ -114,18 +108,14 @@ async def search_recipes(user_ingredients: List[Ingredient]):
     async for doc in cursor:
         match_count = 0
 
-        # Проверяем, сколько ингредиентов из рецепта есть у пользователя
         for req in doc["ingredients"]:
             req_name = req["name"].strip().lower()
             if req_name in user_dict:
-                # Если ингредиент есть в списке пользователя, засчитываем совпадение.
-                # Количество пока не проверяем, чтобы показать рецепт, даже если не хватает.
+
                 match_count += 1
 
-        # Если совпал хотя бы один ингредиент — берем рецепт!
         if match_count > 0:
             suitable.append(doc)
 
-    # Сортируем по рейтингу (от большего к меньшему)
     suitable.sort(key=lambda x: x["rating"], reverse=True)
     return suitable

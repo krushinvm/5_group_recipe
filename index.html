@@ -100,7 +100,6 @@
             return;
         }
 
-        // Превращаем текст "Макароны:250, Помидоры:4" в правильный JSON
         const ingredients = ingStr.split(',').map(item => {
             const parts = item.split(':');
             return {
@@ -127,7 +126,6 @@
         renderRecipes(recipes);
     }
 
-    // Функция отрисовки карточек
     function renderRecipes(recipes) {
         const resultsDiv = document.getElementById('results');
         resultsDiv.innerHTML = '';
