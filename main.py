@@ -1,3 +1,6 @@
+from fastapi.middleware.cors import CORSMiddleware
+
+import re
 import os
 import uuid
 from contextlib import asynccontextmanager
@@ -19,7 +22,7 @@ class Ingredient(BaseModel):
 class RecipeCreate(BaseModel):
     name: str = Field(..., min_length=1, description="Название рецепта")
     rating: float = Field(..., ge=0, le=5, description="Рейтинг от 0 до 5")
-    ingredients: List[Ingredient] = Field(..., min_items=1)
+    ingredients: List[Ingredient] = Field(..., min_length=1, description="Список необходимых ингредиентов")
 
 
 class Recipe(RecipeCreate):
@@ -50,6 +53,14 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 
 @app.get("/", summary="Проверка работы сервера и БД")
 async def root():
@@ -72,7 +83,20 @@ async def add_recipe(recipe: RecipeCreate):
     return new_recipe
 
 
-@app.post("/recipes/search", response_model=List[Recipe], summary="Подобрать рецепты")
+@app.get("/recipes", response_model=List[Recipe], summary="Поиск рецептов по названию")
+async def get_recipes_by_name(name: str = None):
+    query = {}
+    if name:
+        query["name"] = {"$regex": name, "$options": "i"}
+
+    cursor = mongo.db.recipes.find(query, {"_id": 0})
+    recipes = await cursor.to_list(length=100)
+
+    recipes.sort(key=lambda x: x["rating"], reverse=True)
+    return recipes
+
+
+@app.post("/recipes/search", response_model=List[Recipe], summary="Подобрать рецепты (частичное совпадение)")
 async def search_recipes(user_ingredients: List[Ingredient]):
     if not user_ingredients:
         raise HTTPException(status_code=400, detail="Список ингредиентов не может быть пустым")
@@ -82,13 +106,15 @@ async def search_recipes(user_ingredients: List[Ingredient]):
 
     cursor = mongo.db.recipes.find({}, {"_id": 0})
     async for doc in cursor:
-        can_cook = True
+        match_count = 0
+
         for req in doc["ingredients"]:
             req_name = req["name"].strip().lower()
-            if req_name not in user_dict or user_dict[req_name] < req["quantity"]:
-                can_cook = False
-                break
-        if can_cook:
+            if req_name in user_dict:
+
+                match_count += 1
+
+        if match_count > 0:
             suitable.append(doc)
 
     suitable.sort(key=lambda x: x["rating"], reverse=True)
