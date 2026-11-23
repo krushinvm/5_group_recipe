@@ -69,6 +69,7 @@
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
             gap: 20px;
+            align-items: start;
         }
         .recipe-card {
             background: white;
@@ -99,12 +100,19 @@
             margin-bottom: 4px;
         }
         .recipe-instructions {
-            margin-top: auto;
+            margin-top: 8px;
             padding-top: 10px;
             border-top: 1px solid #eee;
             font-size: 14px;
             line-height: 1.5;
             color: #444;
+        }
+        .recipe-instructions summary {
+            cursor: pointer;
+            font-weight: bold;
+            color: #2c3e50;
+            white-space: normal;
+        }
         }
         .recipe-instructions strong {
             display: block;
@@ -288,10 +296,12 @@
                     <div class="recipe-name">${escapeHtml(recipe.name)}</div>
                     <div class="recipe-rating">★ ${recipe.rating}</div>
                     <ul class="ingredients-list">${ingredientsHtml}</ul>
-                    <div class="recipe-instructions">
-                        <strong>Как готовить:</strong>
-                        ${instructionsText}
-                    </div>
+                    <details class="recipe-instructions">
+                        <summary style="cursor: pointer; font-weight: bold; color: #2c3e50;">
+                            Как готовить (пошаговый рецепт)
+                        </summary>
+                        <div style="margin-top: 8px; white-space: pre-line;">${instructionsText}</div>
+                    </details>
                 `;
                 resultsDiv.appendChild(card);
             });
