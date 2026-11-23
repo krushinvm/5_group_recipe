@@ -2,183 +2,300 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>Кулинарная книга</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Кулинарная книга — Управление рецептами</title>
     <style>
-        body { font-family: 'Segoe UI', sans-serif; background-color: #f4f7f6; padding: 20px; color: #333; }
-        .container { max-width: 800px; margin: 0 auto; }
-        .panel { background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin-bottom: 20px; }
-        input, button { padding: 10px; margin: 5px 0; border-radius: 5px; border: 1px solid #ccc; font-size: 16px; }
-        button { background-color: #27ae60; color: white; border: none; cursor: pointer; width: 100%; margin-top: 10px;}
-        button:hover { background-color: #219150; }
-        .recipes-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; }
-        .recipe-card { background: white; border-radius: 10px; padding: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-        .recipe-name { font-size: 20px; font-weight: bold; color: #2c3e50; }
-        .recipe-rating { color: #f39c12; font-weight: bold; margin-bottom: 10px; }
-        .ingredients-list { list-style-type: none; padding: 0; color: #7f8c8d; }
-        .flex-row { display: flex; gap: 10px; }
-        .flex-row input { flex: 1; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f4f7f6;
+            margin: 0;
+            padding: 20px;
+            color: #333;
+        }
+        .container {
+            max-width: 850px;
+            margin: 0 auto;
+        }
+        h1 {
+            color: #2c3e50;
+            margin-bottom: 20px;
+        }
+        .panel {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.08);
+            margin-bottom: 20px;
+        }
+        .panel h3 {
+            margin-top: 0;
+            color: #2c3e50;
+        }
+        input, textarea, button {
+            padding: 10px;
+            margin: 5px 0;
+            border-radius: 5px;
+            border: 1px solid #ddd;
+            font-family: inherit;
+            font-size: 14px;
+            box-sizing: border-box;
+        }
+        .full-width {
+            width: 100%;
+        }
+        textarea {
+            width: 100%;
+            resize: vertical;
+        }
+        button {
+            background-color: #27ae60;
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-weight: 600;
+            transition: background 0.2s;
+        }
+        button:hover {
+            background-color: #219150;
+        }
+        .flex-row {
+            display: flex;
+            gap: 10px;
+        }
+        .flex-row input {
+            flex: 1;
+        }
+        .recipes-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+            gap: 20px;
+        }
+        .recipe-card {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.08);
+            display: flex;
+            flex-direction: column;
+        }
+        .recipe-name {
+            font-size: 20px;
+            font-weight: bold;
+            color: #2c3e50;
+            margin-bottom: 6px;
+        }
+        .recipe-rating {
+            color: #f39c12;
+            font-weight: bold;
+            margin-bottom: 12px;
+        }
+        .ingredients-list {
+            list-style-type: none;
+            padding: 0;
+            margin: 0 0 12px 0;
+            color: #555;
+        }
+        .ingredients-list li {
+            margin-bottom: 4px;
+        }
+        .recipe-instructions {
+            margin-top: auto;
+            padding-top: 10px;
+            border-top: 1px solid #eee;
+            font-size: 14px;
+            line-height: 1.5;
+            color: #444;
+        }
+        .recipe-instructions strong {
+            display: block;
+            margin-bottom: 4px;
+            color: #2c3e50;
+        }
     </style>
 </head>
 <body>
-<div class="container">
-    <h1>🍳 Управление рецептами</h1>
+    <div class="container">
+        <h1>🍳 Управление рецептами</h1>
 
-    <!-- Форма добавления рецепта -->
-    <div class="panel">
-        <h3>Добавить новый рецепт</h3>
-        <input type="text" id="r-name" placeholder="Название (например: Борщ)">
-        <input type="number" id="r-rating" placeholder="Рейтинг (1-5)" step="0.1" min="0" max="5">
-        <input type="text" id="r-ingredients" placeholder="Ингредиенты (Рис:200 г, Яйцо:2 шт)" style="width: 100%;">
-        <button onclick="addRecipe()">Сохранить рецепт</button>
-    </div>
-
-    <!-- Поиск по названию -->
-    <div class="panel">
-        <h3>🔍 Поиск по названию</h3>
-        <div class="flex-row">
-            <input type="text" id="search-name" placeholder="Введите название (например: паста)">
-            <button onclick="searchByName()" style="width: auto;">Найти</button>
+        <div class="panel">
+            <h3>Добавить новый рецепт</h3>
+            <div class="flex-row">
+                <input type="text" id="r-name" placeholder="Название (например: Борщ)">
+                <input type="number" id="r-rating" placeholder="Рейтинг (0–5)" step="0.1" min="0" max="5" style="max-width: 150px;">
+            </div>
+            <input type="text" id="r-ingredients" class="full-width" placeholder="Ингредиенты (например: Рис:200 г, Яйцо:2 шт)">
+            <textarea id="r-instructions" rows="3" placeholder="Как готовить (например: 1. Отварите рис. 2. Обжарьте овощи и смешайте.)"></textarea>
+            <button class="full-width" onclick="addRecipe()">Сохранить рецепт</button>
         </div>
+
+        <div class="panel">
+            <h3>🔍 Поиск по названию</h3>
+            <div class="flex-row">
+                <input type="text" id="search-name" placeholder="Введите название (например: пицца)">
+                <button onclick="searchByName()" style="width: auto; padding: 10px 20px;">Найти</button>
+            </div>
+        </div>
+
+        <div class="panel">
+            <h3>🥗 Поиск по ингредиентам</h3>
+            <input type="text" id="search-ingredients" class="full-width" placeholder="Введите продукты (например: рис:200 г, яйцо:2 шт)">
+            <button class="full-width" onclick="searchByIngredients()">Что можно приготовить?</button>
+        </div>
+
+        <div id="results" class="recipes-grid"></div>
     </div>
 
-    <!-- Поиск по ингредиентам -->
-    <div class="panel">
-        <h3>🥗 Поиск по ингредиентам</h3>
-        <input type="text" id="search-ingredients" placeholder="Введите продукты (например: Рис:200 г, Яйцо:2 шт)" style="width: 100%; margin-bottom: 10px;">
-        <button onclick="searchByIngredients()">Что можно приготовить?</button>
-    </div>
+    <script>
+        const API_URL = 'http://127.0.0.1:8000';
 
-    <!-- Результаты -->
-    <div id="results" class="recipes-grid"></div>
-</div>
+        function parseIngredients(str) {
+            return str.split(',').map(item => {
+                const parts = item.split(':');
+                if (parts.length < 2) return null;
 
-<script>
-    const API_URL = 'http://127.0.0.1:8000';
+                const ingName = parts[0].trim();
+                const qtyAndUnit = parts[1].trim();
+                const match = qtyAndUnit.match(/^([\d.,]+)\s*(.*)$/);
 
-    // 1. Добавление рецепта
-    async function addRecipe() {
-        const name = document.getElementById('r-name').value;
-        const rating = parseFloat(document.getElementById('r-rating').value);
-        const ingStr = document.getElementById('r-ingredients').value;
+                if (!match) return null;
 
-        // Умный парсинг: "Рис:200 г" -> {name: "Рис", quantity: 200, unit: "г"}
-        const ingredients = ingStr.split(',').map(item => {
-            const parts = item.split(':'); // Делим по двоеточию
-            if (parts.length < 2) return null;
+                const quantity = parseFloat(match[1].replace(',', '.'));
+                const unit = match[2] ? match[2].trim() : 'шт';
 
-            const ingName = parts[0].trim();
-            const qtyAndUnit = parts[1].trim(); // Строка "200 г"
+                return { name: ingName, quantity, unit };
+            }).filter(item => item && item.name && !isNaN(item.quantity) && item.quantity > 0);
+        }
 
-            // Ищем цифры и буквы: ([0-9.]+) - это количество, (.*) - это единица измерения
-            const match = qtyAndUnit.match(/^([\d.]+)\s*(.*)$/);
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
 
-            if (match) {
-                return {
-                    name: ingName,
-                    quantity: parseFloat(match[1]),
-                    unit: match[2] ? match[2].trim() : 'шт' // Если единицу не написали, ставим "шт"
-                };
+        async function addRecipe() {
+            const name = document.getElementById('r-name').value.trim();
+            const rating = parseFloat(document.getElementById('r-rating').value);
+            const ingStr = document.getElementById('r-ingredients').value;
+            const instructions = document.getElementById('r-instructions').value.trim();
+
+            if (!name || isNaN(rating)) {
+                alert('Заполните название и рейтинг (от 0 до 5)!');
+                return;
             }
-            return null;
-        }).filter(item => item && item.name && !isNaN(item.quantity));
 
-        if (ingredients.length === 0) {
-            alert('Проверьте формат ингредиентов! Пример: Рис:200 г, Яйцо:2 шт');
-            return;
-        }
-
-        await fetch(`${API_URL}/recipes`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ name, rating, ingredients })
-        });
-
-        alert('Рецепт добавлен!');
-        document.getElementById('r-name').value = '';
-        document.getElementById('r-rating').value = '';
-        document.getElementById('r-ingredients').value = '';
-    }
-
-    // 2. Поиск по названию
-    async function searchByName() {
-        const nameQuery = document.getElementById('search-name').value;
-        const resultsDiv = document.getElementById('results');
-        resultsDiv.innerHTML = '<p>Ищем...</p>';
-
-        // Если поле пустое, найдет все рецепты
-        const response = await fetch(`${API_URL}/recipes?name=${nameQuery}`);
-        const recipes = await response.json();
-
-        renderRecipes(recipes);
-    }
-
-    // 3. Поиск по ингредиентам
-    async function searchByIngredients() {
-        const ingStr = document.getElementById('search-ingredients').value;
-
-        if (!ingStr.trim()) {
-            alert("Пожалуйста, введите продукты!");
-            return;
-        }
-
-        // Тот же умный парсинг: "Рис:200 г" -> {name: "Рис", quantity: 200, unit: "г"}
-        const ingredients = ingStr.split(',').map(item => {
-            const parts = item.split(':');
-            if (parts.length < 2) return null;
-
-            const ingName = parts[0].trim();
-            const qtyAndUnit = parts[1].trim();
-
-            const match = qtyAndUnit.match(/^([\d.]+)\s*(.*)$/);
-
-            if (match) {
-                return {
-                    name: ingName,
-                    quantity: parseFloat(match[1]),
-                    unit: match[2] ? match[2].trim() : 'шт'
-                };
+            const ingredients = parseIngredients(ingStr);
+            if (ingredients.length === 0) {
+                alert('Проверьте формат ингредиентов! Пример: Рис:200 г, Яйцо:2 шт');
+                return;
             }
-            return null;
-        }).filter(item => item && item.name && !isNaN(item.quantity));
 
-        if (ingredients.length === 0) {
-            alert("Ошибка формата! Пишите так: Сыр:100 г, Яйцо:2 шт");
-            return;
+            const payload = {
+                name,
+                rating,
+                ingredients,
+                instructions: instructions || 'Инструкция по приготовлению не указана.'
+            };
+
+            try {
+                const response = await fetch(`${API_URL}/recipes`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                if (response.status === 201) {
+                    alert('Рецепт успешно добавлен!');
+                    document.getElementById('r-name').value = '';
+                    document.getElementById('r-rating').value = '';
+                    document.getElementById('r-ingredients').value = '';
+                    document.getElementById('r-instructions').value = '';
+                } else {
+                    const err = await response.json();
+                    alert('Ошибка при сохранении: ' + JSON.stringify(err.detail));
+                }
+            } catch (error) {
+                alert('Не удалось подключиться к серверу. Проверьте, запущен ли uvicorn.');
+            }
         }
 
-        const resultsDiv = document.getElementById('results');
-        resultsDiv.innerHTML = '<p>Ищем...</p>';
+        async function searchByName() {
+            const nameQuery = document.getElementById('search-name').value.trim();
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = '<p>Ищем...</p>';
 
-        const response = await fetch(`${API_URL}/recipes/search`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(ingredients)
-        });
-
-        const recipes = await response.json();
-        renderRecipes(recipes);
-    }
-
-    function renderRecipes(recipes) {
-        const resultsDiv = document.getElementById('results');
-        resultsDiv.innerHTML = '';
-
-        if (recipes.length === 0) {
-            resultsDiv.innerHTML = '<p>Ничего не найдено 😢</p>';
-            return;
+            try {
+                const url = nameQuery
+                    ? `${API_URL}/recipes?name=${encodeURIComponent(nameQuery)}`
+                    : `${API_URL}/recipes`;
+                const response = await fetch(url);
+                const recipes = await response.json();
+                renderRecipes(recipes);
+            } catch (error) {
+                resultsDiv.innerHTML = '<p style="color:red">Ошибка подключения к серверу.</p>';
+            }
         }
 
-        recipes.forEach(recipe => {
-            const ingredientsHtml = recipe.ingredients.map(ing => `<li>• ${ing.name}: ${ing.quantity} ${ing.unit}</li>`).join('');
-            resultsDiv.innerHTML += `
-                <div class="recipe-card">
-                    <div class="recipe-name">${recipe.name}</div>
+        async function searchByIngredients() {
+            const ingStr = document.getElementById('search-ingredients').value;
+            if (!ingStr.trim()) {
+                alert('Пожалуйста, введите продукты!');
+                return;
+            }
+
+            const ingredients = parseIngredients(ingStr);
+            if (ingredients.length === 0) {
+                alert('Ошибка формата! Пишите так: Сыр:100 г, Яйцо:2 шт');
+                return;
+            }
+
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = '<p>Ищем...</p>';
+
+            try {
+                const response = await fetch(`${API_URL}/recipes/search`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(ingredients)
+                });
+                const recipes = await response.json();
+                renderRecipes(recipes);
+            } catch (error) {
+                resultsDiv.innerHTML = '<p style="color:red">Ошибка подключения к серверу.</p>';
+            }
+        }
+
+        function renderRecipes(recipes) {
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = '';
+
+            if (!Array.isArray(recipes) || recipes.length === 0) {
+                resultsDiv.innerHTML = '<p>Ничего не найдено.</p>';
+                return;
+            }
+
+            recipes.forEach(recipe => {
+                const ingredientsHtml = recipe.ingredients
+                    .map(ing => `<li>• ${escapeHtml(ing.name)}: ${ing.quantity} ${escapeHtml(ing.unit)}</li>`)
+                    .join('');
+
+                const instructionsText = escapeHtml(
+                    recipe.instructions || 'Инструкция по приготовлению не указана.'
+                );
+
+                const card = document.createElement('div');
+                card.className = 'recipe-card';
+                card.innerHTML = `
+                    <div class="recipe-name">${escapeHtml(recipe.name)}</div>
                     <div class="recipe-rating">★ ${recipe.rating}</div>
                     <ul class="ingredients-list">${ingredientsHtml}</ul>
-                </div>
-            `;
-        });
-    }
-</script>
+                    <div class="recipe-instructions">
+                        <strong>Как готовить:</strong>
+                        ${instructionsText}
+                    </div>
+                `;
+                resultsDiv.appendChild(card);
+            });
+        }
+    </script>
 </body>
 </html>

@@ -1,12 +1,10 @@
-from fastapi.middleware.cors import CORSMiddleware
-
-import re
 import os
 import uuid
 from contextlib import asynccontextmanager
-from typing import List
+from typing import List, Optional
 
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
 from pydantic import BaseModel, Field
 
@@ -17,21 +15,29 @@ DB_NAME = os.getenv("DB_NAME", "recipe_finder")
 class Ingredient(BaseModel):
     name: str = Field(..., min_length=1, description="Название продукта")
     quantity: float = Field(..., gt=0, description="Количество")
-    unit: str = Field(..., description="Единица измерения (г, мл, шт)")
+    unit: str = Field(
+        ..., min_length=1, description="Единица измерения (г, мл, шт)"
+    )
 
 
 class RecipeCreate(BaseModel):
     name: str = Field(..., min_length=1, description="Название рецепта")
     rating: float = Field(..., ge=0, le=5, description="Рейтинг от 0 до 5")
-    ingredients: List[Ingredient] = Field(..., min_length=1, description="Список необходимых ингредиентов")
+    ingredients: List[Ingredient] = Field(
+        ..., min_length=1, description="Список ингредиентов"
+    )
+    instructions: str = Field(
+        default="Инструкция по приготовлению не указана.",
+        description="Способ приготовления",
+    )
 
 
 class Recipe(RecipeCreate):
-    id: str = Field(..., description="Уникальный идентификатор")
+    id: str = Field(..., description="Уникальный идентификатор рецепта")
 
 
 class Mongo:
-    client: AsyncIOMotorClient | None = None
+    client: Optional[AsyncIOMotorClient] = None
     db = None
 
 
@@ -50,7 +56,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="Recipe Finder API",
     description="Сервис для добавления рецептов и подбора блюд по ингредиентам",
-    version="1.0.0",
+    version="1.1.0",
     lifespan=lifespan,
 )
 
@@ -72,47 +78,63 @@ async def root():
         raise HTTPException(status_code=503, detail="База данных недоступна")
 
 
-@app.post("/recipes", response_model=Recipe, status_code=201, summary="Добавить рецепт")
+@app.post(
+    "/recipes",
+    response_model=Recipe,
+    status_code=201,
+    summary="Добавить рецепт",
+)
 async def add_recipe(recipe: RecipeCreate):
     new_recipe = {
         "id": str(uuid.uuid4()),
         "name": recipe.name,
         "rating": recipe.rating,
         "ingredients": [ing.model_dump() for ing in recipe.ingredients],
+        "instructions": recipe.instructions,
     }
     await mongo.db.recipes.insert_one(new_recipe)
     return new_recipe
 
 
-@app.get("/recipes", response_model=List[Recipe], summary="Поиск рецептов по названию")
-async def get_recipes_by_name(name: str = None):
+@app.get(
+    "/recipes",
+    response_model=List[Recipe],
+    summary="Поиск рецептов по названию",
+)
+async def get_recipes_by_name(name: Optional[str] = None):
     query = {}
     if name:
         query["name"] = {"$regex": name, "$options": "i"}
 
     cursor = mongo.db.recipes.find(query, {"_id": 0})
     recipes = await cursor.to_list(length=100)
-
     recipes.sort(key=lambda x: x["rating"], reverse=True)
     return recipes
 
 
-@app.post("/recipes/search", response_model=List[Recipe], summary="Подобрать рецепты (частичное совпадение)")
+@app.post(
+    "/recipes/search",
+    response_model=List[Recipe],
+    summary="Подобрать рецепты по ингредиентам",
+)
 async def search_recipes(user_ingredients: List[Ingredient]):
     if not user_ingredients:
-        raise HTTPException(status_code=400, detail="Список ингредиентов не может быть пустым")
+        raise HTTPException(
+            status_code=400,
+            detail="Список ингредиентов не может быть пустым",
+        )
 
-    user_dict = {ing.name.strip().lower(): ing.quantity for ing in user_ingredients}
+    user_dict = {
+        ing.name.strip().lower(): ing.quantity for ing in user_ingredients
+    }
     suitable = []
 
     cursor = mongo.db.recipes.find({}, {"_id": 0})
     async for doc in cursor:
         match_count = 0
-
         for req in doc["ingredients"]:
             req_name = req["name"].strip().lower()
             if req_name in user_dict:
-
                 match_count += 1
 
         if match_count > 0:
